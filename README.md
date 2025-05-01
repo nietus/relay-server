@@ -1,0 +1,3 @@
+# RelayServer
+
+cargo run
