@@ -1,6 +1,6 @@
 use std::{net::SocketAddrV4, sync::{Arc, RwLock}, time::Duration};
 use axum::{
-    Json, Router, extract::State, routing::post,
+    Json, Router, extract::State, routing::{post, get},
     http::Method,
 };
 use serde::{Deserialize, Serialize};
@@ -61,6 +61,7 @@ impl Server {
             .route("/store", post(store))
             .route("/discover", post(discover))
             .route("/waiting_punch", post(waiting_punch))
+            .route("/health", get(health_check))
             .layer(cors)
             .with_state(server.clone());
 
@@ -72,10 +73,39 @@ impl Server {
             }
         });
 
+        // Self-ping mechanism to keep the server awake
+        task::spawn(async move {
+            // Allow 15 seconds for server to fully start up
+            tokio::time::sleep(Duration::from_secs(15)).await;
+            
+            // Get hostname from environment or use hardcoded Render URL
+            let host = std::env::var("HOST_URL").unwrap_or_else(|_| "https://relay-server-nzhu.onrender.com".to_string());
+            let server_url = format!("{}/health", host);
+            
+            println!("Keep-alive will ping: {}", server_url);
+            
+            loop {
+                tokio::time::sleep(Duration::from_secs(240)).await; // Every 4 minutes (Render free tier sleeps after 5 min)
+                let client = reqwest::Client::new();
+                match client.get(&server_url).send().await {
+                    Ok(res) => println!("Keep-alive ping successful: {:?}", res.status()),
+                    Err(e) => println!("Keep-alive ping failed: {}", e),
+                }
+            }
+        });
+
         println!("Servidor HTTP escutando na porta 8080");
         let listener = TcpListener::bind("0.0.0.0:8080").await.unwrap();
         axum::serve(listener, app).await.unwrap();
     }
+}
+
+// Health check endpoint
+async fn health_check() -> Json<RelayResponse> {
+    Json(RelayResponse {
+        status: "ok".into(),
+        message: "Service is running".into(),
+    })
 }
 
 async fn store(
