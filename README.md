@@ -1,37 +1,54 @@
-# RelayServer
+# BlockChat Relay Server
+
+A relay server for facilitating P2P connections for the BlockChat application.
 
 ## Local Development
 
-```
+```bash
 cargo run
 ```
 
 ## Railway Deployment
 
-To deploy this application to Railway:
+This project is configured for deployment on Railway.
 
-1. Install the Railway CLI:
+### Deployment Steps
 
-```
-npm i -g @railway/cli
-```
+1. Create a Railway account at [railway.app](https://railway.app)
+2. Install the Railway CLI:
+   ```bash
+   npm i -g @railway/cli
+   ```
+3. Login to Railway:
+   ```bash
+   railway login
+   ```
+4. Initialize a new project:
+   ```bash
+   railway init
+   ```
+5. Link to your GitHub repository (optional):
+   ```bash
+   railway link
+   ```
+6. Deploy the project:
+   ```bash
+   railway up
+   ```
 
-2. Login to Railway:
+### Environment Variables
 
-```
-railway login
-```
+No environment variables are required for basic functionality.
 
-3. Link to your Railway project:
+### Exposed Services
 
-```
-railway link
-```
+- The relay server runs on port 8080
+- Default Railway domain: https://your-project-name.railway.app
 
-4. Deploy the application:
+## API Endpoints
 
-```
-railway up
-```
-
-The application will be built using the Dockerfile in the repository.
+- `POST /store` - Store peer information
+- `POST /discover` - Discover peer information
+- `POST /waiting_punch` - Set up hole punching
+- `POST /keep_alive` - Keep peer connection alive
+- `POST /passive_wait` - Wait for passive connections

@@ -17,4 +17,5 @@ RUN cargo build --release --bin RelayServer
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/RelayServer /usr/local/bin
+EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/RelayServer"]

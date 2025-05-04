@@ -28,6 +28,30 @@ impl RelayMap {
             return Err("Relay map está cheio".into());
         }
 
+        // Check if this is the placeholder address (127.0.0.9:9)
+        let is_placeholder = peer_addr.ip().octets() == [127, 0, 0, 9] && peer_addr.port() == 9;
+        
+        // Check if we already have this peer with a valid address
+        if let Some(existing_peer) = self.inner.get(&public_key) {
+            let existing_is_placeholder = existing_peer.peer_addr.ip().octets() == [127, 0, 0, 9] && existing_peer.peer_addr.port() == 9;
+            
+            if is_placeholder && !existing_is_placeholder {
+                // Don't replace a valid address with a placeholder
+                println!(
+                    "Keeping existing valid address {} for peer {} (rejecting placeholder)",
+                    existing_peer.peer_addr, public_key
+                );
+                
+                // Just update the timestamp
+                if let Some(peer_data) = self.inner.get_mut(&public_key) {
+                    peer_data.discovery_time = now_ms();
+                }
+                
+                return Ok(());
+            }
+        }
+        
+        // Create new peer data
         let peer_data = PeerData::new(public_key.clone(), peer_addr);
         println!(
             "Binding peer : {}  to {}",

@@ -1,1 +1,1 @@
-web: ./RelayServer 
+web: /usr/local/bin/RelayServer 

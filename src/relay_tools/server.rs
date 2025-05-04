@@ -96,16 +96,48 @@ async fn store(
     State(server): State<Arc<Server>>,
     Json(req): Json<StoreRequest>,
 ) -> Json<RelayResponse> {
+    // First check if this is the special placeholder address
+    let is_placeholder = req.p2p_addr == "127.0.0.9:9";
+    
+    if is_placeholder {
+        println!("Received placeholder address registration for peer {}", req.sender_id);
+    }
+    
+    // Parse the socket address
     let addr: SocketAddrV4 = match req.p2p_addr.parse() {
         Ok(addr) => addr,
-        Err(_) => {
+        Err(e) => {
+            println!("Invalid address format for peer {}: {} - Error: {}", req.sender_id, req.p2p_addr, e);
             return Json(RelayResponse {
                 status: "error".into(),
-                message: "Endereço inválido".into(),
+                message: format!("Invalid address format: {}", e),
             });
         }
     };
+    
+    // Check for existing peer with a better address
+    let has_better_addr = {
+        let map = server.relay_map.read().unwrap();
+        if let Some(existing_peer) = map.get(&req.sender_id) {
+            let existing_is_placeholder = existing_peer.peer_addr.ip().octets() == [127, 0, 0, 9] 
+                && existing_peer.peer_addr.port() == 9;
+            
+            // If current is placeholder and existing is not, we have a better address
+            is_placeholder && !existing_is_placeholder
+        } else {
+            false
+        }
+    };
+    
+    if has_better_addr {
+        println!("Rejecting placeholder update for peer {} that already has a valid address", req.sender_id);
+        return Json(RelayResponse {
+            status: "preserved".into(),
+            message: "Kept existing valid address".into(),
+        });
+    }
 
+    // Regular binding process
     match server
         .relay_map
         .write()
